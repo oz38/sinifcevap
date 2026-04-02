@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SınıfCevap — Tahta</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
+:root{
+  --bg:#0a0c10; --card:#161b26; --border:#1e2535;
+  --green:#3dd68c; --red:#f75f4f; --yellow:#f7c948; --blue:#4f8ef7;
+  --A:#ef4444; --B:#3b82f6; --C:#22c55e; --D:#f59e0b;
+  --text:#e8ecf5; --muted:#4a5168;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;padding:12px 28px;background:var(--card);border-bottom:1px solid var(--border);gap:16px;flex-shrink:0;}
+.tb-title{font-weight:900;font-size:20px;letter-spacing:-.3px;}
+.tb-class{font-size:14px;color:var(--muted);font-weight:600;}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .3s;}
+.conn-dot.ok{background:var(--green);}
+.scan-count{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);}
+
+/* WAITING STATE */
+.waiting{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.waiting-icon{font-size:64px;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.08);opacity:1}}
+.waiting-text{font-size:22px;font-weight:700;color:var(--muted);}
+.waiting-sub{font-size:15px;color:var(--muted);opacity:.6;}
+
+/* SCANNING STATE */
+.scanning{flex:1;display:flex;flex-direction:column;}
+.scan-header{padding:16px 28px 0;display:flex;align-items:center;gap:16px;}
+.question-label{font-size:18px;font-weight:800;}
+.progress-wrap{flex:1;height:10px;background:var(--border);border-radius:99px;overflow:hidden;}
+.progress-bar{height:100%;background:var(--blue);border-radius:99px;transition:width .4s ease;}
+.progress-text{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);white-space:nowrap;}
+
+/* STUDENT GRID */
+.student-grid{flex:1;display:grid;padding:16px 28px;gap:8px;overflow:hidden;align-content:start;}
+.s-tile{background:var(--card);border:2px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;transition:all .3s;}
+.s-tile.answered{border-color:var(--blue);background:rgba(79,142,247,.08);}
+.s-tile.correct{border-color:var(--green);background:rgba(61,214,140,.1);animation:popIn .4s ease;}
+.s-tile.wrong{border-color:var(--red);background:rgba(247,95,79,.1);}
+@keyframes popIn{0%{transform:scale(.95)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+.s-name{font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s-ans{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:white;flex-shrink:0;}
+.ans-A{background:var(--A);} .ans-B{background:var(--B);} .ans-C{background:var(--C);} .ans-D{background:var(--D);}
+.ans-none{background:var(--border);}
+.s-icon{font-size:16px;flex-shrink:0;}
+
+/* RESULT STATE */
+.result-view{flex:1;display:flex;flex-direction:column;padding:20px 28px;gap:16px;overflow:hidden;}
+.result-top{display:flex;gap:16px;align-items:stretch;}
+
+.big-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex-shrink:0;}
+.bstat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+.bstat .n{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;line-height:1;}
+.bstat .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:4px;}
+
+/* BAR CHART */
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;flex:1;}
+.chart-title{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;}
+.bars{display:flex;gap:12px;align-items:flex-end;height:90px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;}
+.bar-fill{width:100%;border-radius:6px 6px 0 0;transition:height .6s cubic-bezier(.34,1.56,.64,1);min-height:3px;}
+.bar-fill.A{background:var(--A);} .bar-fill.B{background:var(--B);} .bar-fill.C{background:var(--C);} .bar-fill.D{background:var(--D);}
+.bar-fill.glow{box-shadow:0 0 16px 3px currentColor;}
+.bar-n{font-weight:900;font-size:18px;} .bar-l{font-weight:900;font-size:16px;}
+
+/* CORRECT ANSWER REVEAL */
+.correct-banner{background:rgba(61,214,140,.12);border:2px solid var(--green);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.correct-chip{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px;color:white;}
+.correct-text{font-weight:800;font-size:18px;}
+.correct-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* RESULT STUDENT GRID */
+.result-students{flex:1;display:grid;gap:7px;overflow-y:auto;align-content:start;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-title">📚 SınıfCevap</div>
+  <div class="tb-class" id="tb-class">—</div>
+  <div class="tb-right">
+    <span class="scan-count" id="scan-count-top"></span>
+    <div class="conn-dot" id="conn-dot"></div>
+  </div>
+</div>
+
+<!-- WAITING -->
+<div class="waiting" id="state-waiting">
+  <div class="waiting-icon">📡</div>
+  <div class="waiting-text">Tarama bekleniyor...</div>
+  <div class="waiting-sub">Telefonda taramayı başlatın</div>
+</div>
+
+<!-- SCANNING -->
+<div class="scanning" style="display:none" id="state-scanning">
+  <div class="scan-header">
+    <div class="question-label" id="scan-qlabel"></div>
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    <div class="progress-text" id="progress-text">0/0</div>
+  </div>
+  <div class="student-grid" id="student-grid"></div>
+</div>
+
+<!-- RESULT -->
+<div class="result-view" style="display:none" id="state-result">
+  <div class="result-top">
+    <div class="big-stats" id="big-stats"></div>
+    <div class="chart-wrap">
+      <div class="chart-title">Şık Dağılımı</div>
+      <div class="bars">
+        <div class="bar-col"><div class="bar-n" id="bn-A" style="color:var(--A)">0</div><div class="bar-fill A" id="bf-A" style="height:3px"></div><div class="bar-l" style="color:var(--A)">A</div></div>
+        <div class="bar-col"><div class="bar-n" id="bn-B" style="color:var(--B)">0</div><div class="bar-fill B" id="bf-B" style="height:3px"></div><div class="bar-l" style="color:var(--B)">B</div></div>
+        <div class="bar-col"><div class="bar-n" id="bn-C" style="color:var(--C)">0</div><div class="bar-fill C" id="bf-C" style="height:3px"></div><div class="bar-l" style="color:var(--C)">C</div></div>
+        <div class="bar-col"><div class="bar-n" id="bn-D" style="color:var(--D)">0</div><div class="bar-fill D" id="bf-D" style="height:3px"></div><div class="bar-l" style="color:var(--D)">D</div></div>
+      </div>
+    </div>
+  </div>
+  <div id="correct-banner-wrap"></div>
+  <div class="result-students" id="result-students"></div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDyq3hYjvV2y7KrXjdyo5Nb_GFxrRu3OYM",
+  authDomain: "sinif-cev.firebaseapp.com",
+  databaseURL: "https://sinif-cev-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "sinif-cev", storageBucket: "sinif-cev.firebasestorage.app",
+  messagingSenderId: "1025764042371", appId: "1:1025764042371:web:280e6ac48e960d7cf9ddb6"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+
+db.ref('.info/connected').on('value', s => {
+  document.getElementById('conn-dot').className = 'conn-dot' + (s.val()?' ok':'');
+});
+
+let allClasses = {};
+let currentSession = null;
+let currentResult = null;
+let correctAnswer = null;
+
+db.ref('classes').on('value', s => {
+  allClasses = {};
+  s.forEach(c => allClasses[c.key] = {id: c.key, ...c.val()});
+});
+
+// Live scan updates
+db.ref('session').on('value', snap => {
+  const data = snap.val();
+  if (!data) { showState('waiting'); return; }
+
+  const {state, classId, questionLabel, answers, correctAnswer: ca, currentResult: cr} = data;
+
+  // Update class name in topbar
+  const cls = allClasses[classId];
+  document.getElementById('tb-class').textContent = cls ? cls.name : '';
+
+  if (state === 'scanning') {
+    currentSession = data;
+    showState('scanning');
+    renderScanning(cls, questionLabel, answers || {});
+  } else if (state === 'result' || cr) {
+    currentResult = cr || data;
+    correctAnswer = ca || null;
+    showState('result');
+    renderResult(cls, currentResult, correctAnswer);
+  } else {
+    showState('waiting');
+  }
+});
+
+function showState(s) {
+  document.getElementById('state-waiting').style.display  = s==='waiting'  ? 'flex' : 'none';
+  document.getElementById('state-scanning').style.display = s==='scanning' ? 'flex' : 'none';
+  document.getElementById('state-result').style.display   = s==='result'   ? 'flex' : 'none';
+}
+
+function renderScanning(cls, label, answers) {
+  const students = cls?.students || [];
+  const total = students.length;
+  const count = Object.keys(answers).length;
+
+  document.getElementById('scan-qlabel').textContent = label || 'Tarama yapılıyor...';
+  document.getElementById('progress-bar').style.width = (total>0?count/total*100:0)+'%';
+  document.getElementById('progress-text').textContent = `${count}/${total}`;
+  document.getElementById('scan-count-top').textContent = `${count}/${total} tarandı`;
+
+  const grid = document.getElementById('student-grid');
+  // Responsive columns based on student count
+  const cols = total <= 20 ? 4 : total <= 30 ? 5 : 6;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  grid.innerHTML = '';
+  students.forEach(s => {
+    const ans = answers[s.cardNum];
+    const div = document.createElement('div');
+    div.className = 's-tile' + (ans ? ' answered' : '');
+    div.innerHTML = `
+      <div class="s-ans ${ans?'ans-'+ans:'ans-none'}">${ans||'?'}</div>
+      <div class="s-name">${s.name}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function renderResult(cls, entry, correct) {
+  if (!entry) return;
+  const students = cls?.students || [];
+  const answers = entry.answers || {};
+  const counts = {A:0,B:0,C:0,D:0};
+  Object.values(answers).forEach(a => counts[a]++);
+  const total = Object.values(counts).reduce((s,v)=>s+v,0);
+  const maxC = Math.max(...Object.values(counts), 1);
+  const corCount = correct ? counts[correct] : null;
+  const pct = corCount!=null && total>0 ? Math.round(corCount/total*100) : null;
+
+  // Big stats
+  document.getElementById('big-stats').innerHTML = `
+    <div class="bstat"><div class="n" style="color:var(--blue)">${total}</div><div class="l">Cevaplayan</div></div>
+    <div class="bstat"><div class="n" style="color:var(--green)">${corCount??'—'}</div><div class="l">Doğru</div></div>
+    <div class="bstat"><div class="n" style="color:var(--red)">${corCount!=null?total-corCount:'—'}</div><div class="l">Yanlış</div></div>
+    <div class="bstat"><div class="n" style="color:var(--yellow)">${pct!=null?pct+'%':'—'}</div><div class="l">Başarı</div></div>
+  `;
+
+  // Bars
+  ['A','B','C','D'].forEach(l => {
+    document.getElementById('bn-'+l).textContent = counts[l];
+    document.getElementById('bf-'+l).style.height = Math.max(3,counts[l]/maxC*90)+'px';
+    document.getElementById('bf-'+l).classList.toggle('glow', l===correct);
+  });
+
+  // Correct banner
+  const bannerWrap = document.getElementById('correct-banner-wrap');
+  if (correct) {
+    bannerWrap.innerHTML = `
+      <div class="correct-banner">
+        <div class="correct-chip ans-${correct}">${correct}</div>
+        <div>
+          <div class="correct-text">Doğru Cevap: ${correct}</div>
+          <div class="correct-sub">${corCount} öğrenci doğru bildi — Başarı: %${pct}</div>
+        </div>
+      </div>`;
+  } else {
+    bannerWrap.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:4px 0">Doğru cevap henüz açıklanmadı</div>';
+  }
+
+  // Student tiles
+  const sg = document.getElementById('result-students');
+  const cols = students.length <= 20 ? 4 : students.length <= 30 ? 5 : 6;
+  sg.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  sg.innerHTML = '';
+  students.forEach(s => {
+    const ans = answers[s.cardNum];
+    const isCorrect = ans && ans === correct;
+    const isWrong = ans && ans !== correct && correct;
+    const div = document.createElement('div');
+    div.className = 's-tile' + (isCorrect?' correct':isWrong?' wrong':ans?' answered':'');
+    div.innerHTML = `
+      <div class="s-ans ${ans?'ans-'+ans:'ans-none'}">${ans||'?'}</div>
+      <div class="s-name">${s.name}</div>
+      <div class="s-icon">${isCorrect?'✅':isWrong?'❌':''}</div>
+    `;
+    sg.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>
