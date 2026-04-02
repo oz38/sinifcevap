@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SınıfCevap — Bağlantı Kartı</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:#eef2ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.page{background:white;border-radius:20px;padding:32px;max-width:720px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.12);}
+.title{text-align:center;font-size:28px;font-weight:900;color:#111;margin-bottom:4px;}
+.subtitle{text-align:center;font-size:14px;color:#999;margin-bottom:28px;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.card{background:#f7f9ff;border-radius:14px;padding:16px 12px;text-align:center;border:2px solid #e2e8ff;}
+.card-icon{font-size:26px;margin-bottom:8px;}
+.qr-wrap{display:flex;justify-content:center;margin-bottom:10px;}
+.qr-wrap canvas, .qr-wrap img{border-radius:6px;}
+.card-title{font-weight:900;font-size:15px;color:#111;margin-bottom:3px;}
+.card-desc{font-size:11px;color:#888;line-height:1.5;margin-bottom:6px;}
+.card-url{font-size:10px;color:#4f8ef7;font-weight:700;word-break:break-all;background:#eef2ff;border-radius:6px;padding:4px 6px;display:inline-block;}
+.divider{border:none;border-top:1px solid #eee;margin:20px 0;}
+.steps{background:#f0f4ff;border-radius:12px;padding:16px 20px;}
+.steps-title{font-weight:900;font-size:14px;color:#333;margin-bottom:12px;}
+.step{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;font-size:13px;color:#555;line-height:1.5;}
+.step:last-child{margin-bottom:0;}
+.sn{background:#4f8ef7;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;flex-shrink:0;margin-top:1px;}
+.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#111;color:white;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;cursor:pointer;}
+.print-btn:hover{background:#333;}
+@media print{.print-btn{display:none;}body{background:white;padding:0;}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="title">📚 SınıfCevap</div>
+  <div class="subtitle">oz38.github.io/sinifcevap — Firebase Senkronizasyonlu</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">📱</div>
+      <div class="qr-wrap" id="qr-telefon"></div>
+      <div class="card-title">Telefon</div>
+      <div class="card-desc">Kamera ile kart tarama + doğru cevabı açma</div>
+      <div class="card-url">telefon.html</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🖥️</div>
+      <div class="qr-wrap" id="qr-tahta"></div>
+      <div class="card-title">Tahta</div>
+      <div class="card-desc">Canlı sonuç ekranı — öğrenciler görür</div>
+      <div class="card-url">tahta.html</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">💻</div>
+      <div class="qr-wrap" id="qr-yonetim"></div>
+      <div class="card-title">Yönetim</div>
+      <div class="card-desc">Sınıf tanımlama, geçmiş ve Excel export</div>
+      <div class="card-url">yonetim.html</div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="steps-title">⚡ Ders Akışı</div>
+    <div class="step"><div class="sn">1</div><div>Tahtada <b>tahta.html</b>'i aç → F11 tam ekran yap</div></div>
+    <div class="step"><div class="sn">2</div><div>Telefonda <b>telefon.html</b>'i aç → sınıfı seç</div></div>
+    <div class="step"><div class="sn">3</div><div>Kamerayı başlat → sınıfa doğru tut → kartlar taranır, tahta güncellenir</div></div>
+    <div class="step"><div class="sn">4</div><div>Telefonda doğru cevabı seç (A/B/C/D) → tahtada anında ✅❌ görünür</div></div>
+    <div class="step"><div class="sn">5</div><div><b>Kaydet & Tahtaya Gönder</b> → geçmişe işlenir</div></div>
+    <div class="step"><div class="sn">6</div><div>Geçmişi ve Excel'i <b>yonetim.html</b>'den indir</div></div>
+  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Yazdır & Cüzdana Koy</button>
+</div>
+
+<script>
+const BASE = 'https://oz38.github.io/sinifcevap/';
+const pages = [
+  {id:'qr-telefon', url: BASE+'telefon.html'},
+  {id:'qr-tahta',   url: BASE+'tahta.html'},
+  {id:'qr-yonetim', url: BASE+'yonetim.html'},
+];
+pages.forEach(p => {
+  new QRCode(document.getElementById(p.id), {
+    text: p.url,
+    width: 150,
+    height: 150,
+    colorDark: '#111111',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+});
+</script>
+</body>
+</html>
