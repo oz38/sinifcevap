@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SınıfCevap — Tarama</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=JetBrains+Mono:wght@700&display=swap');
+:root{
+  --bg:#0d0f14;--surface:#151820;--card:#1c2030;--border:#252a3a;
+  --accent:#4f8ef7;--green:#3dd68c;--yellow:#f7c948;--red:#f75f4f;
+  --text:#e8ecf5;--muted:#6b7494;
+  --A:#ef4444;--B:#3b82f6;--C:#22c55e;--D:#f59e0b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.logo{font-weight:900;font-size:15px;color:var(--accent);}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);margin-left:auto;transition:background .3s;}
+.conn-dot.ok{background:var(--green);}
+.content{flex:1;overflow-y:auto;padding:14px;}
+
+/* OpenCV status */
+.cv-status{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.cv-dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0;}
+.cv-dot.ready{background:var(--green);}
+.cv-dot.error{background:var(--red);}
+
+.sec-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;}
+
+/* Class chips */
+.class-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.class-chip{padding:7px 13px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;color:var(--text);transition:all .15s;}
+.class-chip.active{border-color:var(--accent);background:rgba(79,142,247,.12);color:var(--accent);}
+
+/* Question input */
+.q-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;margin-bottom:14px;}
+.q-input:focus{outline:none;border-color:var(--accent);}
+
+/* Video */
+.video-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border);margin-bottom:10px;}
+#cam-video{width:100%;display:block;max-height:240px;object-fit:cover;}
+#scan-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.cam-btns{display:flex;gap:8px;margin-bottom:10px;}
+.btn{padding:9px 14px;border-radius:8px;border:none;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;}
+.btn-primary{background:var(--accent);color:white;}
+.btn-danger{background:var(--red);color:white;}
+.btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border);}
+.btn-success{background:var(--green);color:#0d1a0f;}
+.btn-full{width:100%;justify-content:center;padding:11px;font-size:14px;}
+
+/* Progress */
+.prog-row{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.prog-wrap{flex:1;height:7px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s;}
+.prog-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+
+/* Detected */
+.det-list{background:var(--card);border-radius:10px;overflow:hidden;margin-bottom:12px;max-height:180px;overflow-y:auto;}
+.det-row{display:flex;align-items:center;gap:9px;padding:7px 11px;border-bottom:1px solid var(--border);font-size:13px;}
+.det-row:last-child{border-bottom:none;}
+.ans-chip{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:white;flex-shrink:0;}
+.chip-A{background:var(--A);}.chip-B{background:var(--B);}.chip-C{background:var(--C);}.chip-D{background:var(--D);}
+
+/* Manual */
+.manual-box{background:var(--card);border-radius:10px;padding:11px;margin-bottom:12px;}
+.manual-row{display:flex;gap:7px;align-items:center;margin-top:7px;flex-wrap:wrap;}
+.sel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;flex:1;min-width:0;}
+.ans-btn{width:38px;height:38px;border-radius:8px;border:none;font-weight:900;font-size:15px;color:white;cursor:pointer;transition:transform .1s;}
+.ans-btn:active{transform:scale(.92);}
+.ans-btn.A{background:var(--A);}.ans-btn.B{background:var(--B);}.ans-btn.C{background:var(--C);}.ans-btn.D{background:var(--D);}
+
+/* Correct answer */
+.correct-box{background:var(--card);border-radius:10px;padding:11px;margin-bottom:12px;}
+.ca-btns{display:flex;gap:7px;margin-top:7px;}
+.ca-btn{flex:1;height:42px;border-radius:9px;border:3px solid transparent;font-weight:900;font-size:17px;color:white;cursor:pointer;transition:all .15s;}
+.ca-btn.A{background:var(--A);}.ca-btn.B{background:var(--B);}.ca-btn.C{background:var(--C);}.ca-btn.D{background:var(--D);}
+.ca-btn.picked{border-color:white;transform:scale(1.08);}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green);color:#0d1a0f;padding:9px 18px;border-radius:10px;font-weight:700;font-size:13px;z-index:999;opacity:0;transition:all .3s;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">📱 SınıfCevap Tarama</div>
+  <div class="conn-dot" id="conn-dot"></div>
+</div>
+<div class="content">
+
+  <!-- OpenCV Status -->
+  <div class="cv-status" id="cv-status">
+    <div class="cv-dot" id="cv-dot"></div>
+    <span id="cv-text">OpenCV.js yükleniyor...</span>
+  </div>
+
+  <!-- Class -->
+  <div class="sec-label">Sınıf Seç</div>
+  <div class="class-chips" id="class-chips"><div style="font-size:13px;color:var(--muted)">Yükleniyor...</div></div>
+
+  <!-- Question -->
+  <div class="sec-label">Soru Başlığı</div>
+  <input type="text" class="q-input" id="qlabel" placeholder="Örn: Fen 3. Soru">
+
+  <!-- Camera -->
+  <div class="video-wrap">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <canvas id="scan-canvas"></canvas>
+  </div>
+  <div id="debug-panel" style="background:#1a0a00;border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:11px;color:#f59e0b;font-family:'JetBrains Mono',monospace;margin-bottom:10px;max-height:120px;overflow-y:auto;line-height:1.6;"></div>
+  <div class="cam-btns">
+    <button class="btn btn-primary" id="cam-start" onclick="startCam()">▶ Kamerayı Başlat</button>
+    <button class="btn btn-danger" id="cam-stop" onclick="stopCam()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-ghost" onclick="clearScan()">🗑</button>
+    <button class="btn btn-ghost" onclick="toggleDebug()" style="font-size:11px">🐛</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="prog-row">
+    <div class="prog-wrap"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="prog-text" id="prog-text">0/0</div>
+  </div>
+
+  <!-- Detected list -->
+  <div class="sec-label">Taranan Cevaplar</div>
+  <div class="det-list" id="det-list">
+    <div class="det-row" style="color:var(--muted)">Henüz cevap yok.</div>
+  </div>
+
+  <!-- Manual -->
+  <div class="manual-box">
+    <div class="sec-label">Manuel Giriş</div>
+    <div class="manual-row">
+      <select class="sel" id="man-sel"></select>
+      <button class="ans-btn A" onclick="manIn('A')">A</button>
+      <button class="ans-btn B" onclick="manIn('B')">B</button>
+      <button class="ans-btn C" onclick="manIn('C')">C</button>
+      <button class="ans-btn D" onclick="manIn('D')">D</button>
+    </div>
+  </div>
+
+  <!-- Correct answer -->
+  <div class="correct-box">
+    <div class="sec-label">Doğru Cevap — Seçince Tahtada Açıklanır</div>
+    <div class="ca-btns">
+      <button class="ca-btn A" onclick="setCorrect('A')">A</button>
+      <button class="ca-btn B" onclick="setCorrect('B')">B</button>
+      <button class="ca-btn C" onclick="setCorrect('C')">C</button>
+      <button class="ca-btn D" onclick="setCorrect('D')">D</button>
+    </div>
+  </div>
+
+  <button class="btn btn-success btn-full" onclick="saveScan()" style="margin-bottom:20px">✅ Kaydet & Tahtaya Gönder</button>
+  <button class="btn btn-ghost btn-full" onclick="resetSession()" style="margin-bottom:24px">🔄 Yeni Soruya Geç</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── FIREBASE ──
+const FIREBASE_CONFIG={apiKey:"AIzaSyDyq3hYjvV2y7KrXjdyo5Nb_GFxrRu3OYM",authDomain:"sinif-cev.firebaseapp.com",databaseURL:"https://sinif-cev-default-rtdb.europe-west1.firebasedatabase.app",projectId:"sinif-cev",storageBucket:"sinif-cev.firebasestorage.app",messagingSenderId:"1025764042371",appId:"1:1025764042371:web:280e6ac48e960d7cf9ddb6"};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db=firebase.database();
+db.ref('.info/connected').on('value',s=>{document.getElementById('conn-dot').className='conn-dot'+(s.val()?' ok':'');});
+
+let classes=[], activeClassId=null, scanAnswers={}, correctAnswer=null;
+let camStream=null, scanning=false, lastPush=0;
+
+db.ref('classes').on('value',snap=>{classes=[];snap.forEach(c=>classes.push({id:c.key,...c.val()}));renderChips();refreshManSel();});
+
+function renderChips(){
+  const el=document.getElementById('class-chips');
+  el.innerHTML='';
+  if(!classes.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">Yönetim panelinden sınıf ekleyin.</div>';return;}
+  classes.forEach(cls=>{
+    const btn=document.createElement('button');
+    btn.className='class-chip'+(cls.id===activeClassId?' active':'');
+    btn.textContent=cls.name;
+    btn.onclick=()=>{activeClassId=cls.id;renderChips();refreshManSel();pushScan();};
+    el.appendChild(btn);
+  });
+}
+
+function refreshManSel(){
+  const sel=document.getElementById('man-sel');sel.innerHTML='';
+  const cls=classes.find(c=>c.id===activeClassId);
+  if(!cls)return;
+  (cls.students||[]).forEach(s=>{const o=document.createElement('option');o.value=s.cardNum;o.textContent=`#${s.cardNum} ${s.name}`;sel.appendChild(o);});
+}
+
+function totalStudents(){return(classes.find(c=>c.id===activeClassId)?.students||[]).length;}
+
+function pushScan(){
+  if(!activeClassId)return;
+  db.ref('session').set({state:'scanning',classId:activeClassId,questionLabel:document.getElementById('qlabel').value||'Soru',answers:scanAnswers,correctAnswer:null,updatedAt:Date.now()});
+}
+
+function renderDet(){
+  const cls=classes.find(c=>c.id===activeClassId);
+  const tot=totalStudents();const cnt=Object.keys(scanAnswers).length;
+  const pct=tot>0?cnt/tot*100:0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-text').textContent=`${cnt}/${tot}`;
+  const el=document.getElementById('det-list');el.innerHTML='';
+  const entries=Object.entries(scanAnswers);
+  if(!entries.length){el.innerHTML='<div class="det-row" style="color:var(--muted)">Henüz cevap yok.</div>';return;}
+  entries.sort((a,b)=>parseInt(a[0])-parseInt(b[0])).forEach(([cn,ans])=>{
+    const s=cls?.students?.find(s=>s.cardNum==cn);
+    const div=document.createElement('div');div.className='det-row';
+    div.innerHTML=`<div class="ans-chip chip-${ans}">${ans}</div><span style="font-weight:600">${s?.name||'Kart #'+cn}</span><span style="margin-left:auto;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">#${cn}</span>`;
+    el.appendChild(div);
+  });
+}
+
+function clearScan(){scanAnswers={};correctAnswer=null;document.querySelectorAll('.ca-btn').forEach(b=>b.classList.remove('picked'));renderDet();pushScan();}
+function manIn(ans){const cn=document.getElementById('man-sel').value;if(!cn)return;scanAnswers[cn]=ans;renderDet();pushScan();}
+
+function setCorrect(ans){
+  correctAnswer=ans;
+  document.querySelectorAll('.ca-btn').forEach(b=>b.classList.toggle('picked',b.textContent===ans));
+  db.ref('session/correctAnswer').set(ans);
+  db.ref('session/state').set('result');
+  toast(`Doğru cevap: ${ans} — Tahta güncellendi`);
+}
+
+function saveScan(){
+  if(!activeClassId){toast('Sınıf seçin!');return;}
+  if(!Object.keys(scanAnswers).length){toast('Henüz cevap yok!');return;}
+  const entry={id:Date.now().toString(),classId:activeClassId,label:document.getElementById('qlabel').value||`Soru ${Date.now()}`,correct:correctAnswer,date:Date.now(),answers:{...scanAnswers}};
+  db.ref('history/'+entry.id).set(entry);
+  db.ref('session').set({state:'result',classId:activeClassId,questionLabel:entry.label,answers:scanAnswers,correctAnswer,currentResult:entry,updatedAt:Date.now()});
+  toast('Kaydedildi! ✅');
+}
+
+function resetSession(){
+  scanAnswers={};correctAnswer=null;
+  document.getElementById('qlabel').value='';
+  document.querySelectorAll('.ca-btn').forEach(b=>b.classList.remove('picked'));
+  renderDet();
+  db.ref('session').set({state:'scanning',classId:activeClassId,questionLabel:'',answers:{},correctAnswer:null,updatedAt:Date.now()});
+  toast('Yeni soru hazır');
+}
+
+// ── OPENCV ARUCO ──
+let cvReady=false;
+
+function updateCvStatus(state,msg){
+  const dot=document.getElementById('cv-dot');
+  const txt=document.getElementById('cv-text');
+  txt.textContent=msg;
+  dot.className='cv-dot'+(state==='ready'?' ready':state==='error'?' error':'');
+}
+
+// Load OpenCV — reliable init pattern
+var Module = {
+  onRuntimeInitialized: function() {
+    onCvReady();
+  }
+};
+
+function onCvReady(){
+  cvReady=true;
+  updateCvStatus('ready','OpenCV hazır ✓ — ArUco tarama aktif');
+  dbg('✓ onCvReady çağrıldı');
+  dbg('cv.Mat: '+(typeof cv.Mat));
+  dbg('cv.ArucoDetector: '+(typeof cv.ArucoDetector));
+  dbg('cv.aruco: '+(typeof cv.aruco));
+  // Otomatik ArUco init
+  initAruco();
+}
+
+const script=document.createElement('script');
+script.src='https://oz38.github.io/sinifcevap/opencv.js';
+script.async=true;
+script.onload=()=>{
+  updateCvStatus('loading','OpenCV başlatılıyor...');
+  // onRuntimeInitialized will fire automatically
+  // Fallback: poll until cv is ready
+  let tries = 0;
+  const poll = setInterval(()=>{
+    tries++;
+    if(typeof cv !== 'undefined' && cv.Mat){
+      clearInterval(poll);
+      if(!cvReady) onCvReady();
+    }
+    if(tries > 100) {
+      clearInterval(poll);
+      updateCvStatus('error','OpenCV başlatılamadı');
+    }
+  }, 200);
+};
+script.onerror=()=>{
+  updateCvStatus('error','opencv.js bulunamadı — GitHub\'a yükleyin');
+};
+document.head.appendChild(script);
+
+// ArUco detection using OpenCV.js
+const ARUCO_DICT_4X4_50 = cv ? null : null; // will use cv.aruco after ready
+
+async function startCam(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});
+    const vid=document.getElementById('cam-video');
+    vid.srcObject=camStream;
+    document.getElementById('cam-start').style.display='none';
+    document.getElementById('cam-stop').style.display='';
+    scanning=true;
+    vid.onloadedmetadata=()=>requestAnimationFrame(scanLoop);
+  }catch(e){toast('Kamera hatası: '+e.message);}
+}
+
+function stopCam(){
+  if(camStream)camStream.getTracks().forEach(t=>t.stop());
+  scanning=false;
+  document.getElementById('cam-start').style.display='';
+  document.getElementById('cam-stop').style.display='none';
+}
+
+function scanLoop(){
+  if(!scanning)return;
+  const vid=document.getElementById('cam-video');
+  const oc=document.getElementById('scan-canvas');
+  oc.width=vid.videoWidth||640;oc.height=vid.videoHeight||480;
+  const ctx=oc.getContext('2d');
+  ctx.drawImage(vid,0,0,oc.width,oc.height);
+
+  if(cvReady){
+    try{detectAruco(ctx,oc.width,oc.height);}catch(e){}
+  }
+  requestAnimationFrame(scanLoop);
+}
+
+let debugLines=[];
+function dbg(msg){
+  debugLines.push(msg);
+  if(debugLines.length>8)debugLines.shift();
+  const p=document.getElementById('debug-panel');
+  p.style.display='block';
+  p.innerHTML=debugLines.join('<br>');
+}
+
+let arucoInitTried=false;
+let arucoDetector=null;
+
+function initAruco(){
+  if(arucoInitTried)return;
+  arucoInitTried=true;
+  try{
+    // Try new API (OpenCV 4.7+)
+    if(cv.ArucoDetector){
+      const dict=cv.getPredefinedDictionary(cv.DICT_4X4_50);
+      const params=new cv.DetectorParameters();
+      arucoDetector=new cv.ArucoDetector(dict,params);
+      dbg('✓ ArucoDetector API hazır');
+    } else if(cv.aruco){
+      dbg('✓ cv.aruco API hazır');
+    } else {
+      dbg('⚠ ArUco API bulunamadı');
+      dbg('cv keys: '+Object.keys(cv).filter(k=>k.includes('ruco')||k.includes('etect')).join(', '));
+    }
+  }catch(e){
+    dbg('✗ ArUco init hatası: '+e.message);
+  }
+}
+
+function detectAruco(ctx,w,h){
+  if(!arucoInitTried)initAruco();
+  if(!arucoDetector&&!cv.aruco){return;}
+
+  const src=cv.imread(ctx.canvas);
+  const gray=new cv.Mat();
+  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+
+  const corners=new cv.MatVector();
+  const ids=new cv.Mat();
+
+  try{
+    if(arucoDetector){
+      arucoDetector.detectMarkers(gray,corners,ids);
+    } else {
+      const dict=cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50);
+      const params=cv.aruco.DetectorParameters_create();
+      cv.aruco.detectMarkers(gray,dict,corners,ids,params);
+    }
+  }catch(e){
+    dbg('Detect err: '+e.message);
+    src.delete();gray.delete();corners.delete();ids.delete();
+    return;
+  }
+
+  const numMarkers=ids.rows;
+  if(numMarkers>0){
+    let newFound=false;
+    for(let i=0;i<numMarkers;i++){
+      const id=ids.intAt(i,0);
+      if(id<0||id>24)continue;
+      const cardNum=id+1;
+
+      // Get corners to determine orientation
+      const markerCorners=corners.get(i);
+      // corners order: top-left, top-right, bottom-right, bottom-left
+      const c0x=markerCorners.floatAt(0,0),c0y=markerCorners.floatAt(0,1); // TL
+      const c1x=markerCorners.floatAt(0,2),c1y=markerCorners.floatAt(0,3); // TR
+      const c2x=markerCorners.floatAt(0,4),c2y=markerCorners.floatAt(0,5); // BR
+      const c3x=markerCorners.floatAt(0,6),c3y=markerCorners.floatAt(0,7); // BL
+
+      // Determine which side is "up" based on marker rotation
+      // The marker's top edge vector determines orientation
+      const dx=c1x-c0x, dy=c1y-c0y; // top edge direction
+      const angle=Math.atan2(dy,dx)*180/Math.PI;
+
+      let ans;
+      // Normalize angle to 0-360
+      const a=(angle+360)%360;
+      if(a<45||a>=315) ans='A';       // card held normally (A up)
+      else if(a>=45&&a<135) ans='D';  // rotated 90° CW (D up)
+      else if(a>=135&&a<225) ans='C'; // upside down (C up)
+      else ans='B';                    // rotated 90° CCW (B up)
+
+      if(!scanAnswers[cardNum]){
+        scanAnswers[cardNum]=ans;
+        newFound=true;
+      }
+
+      // Draw overlay
+      ctx.strokeStyle='#3dd68c';ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(c0x,c0y);ctx.lineTo(c1x,c1y);ctx.lineTo(c2x,c2y);ctx.lineTo(c3x,c3y);
+      ctx.closePath();ctx.stroke();
+      ctx.fillStyle='rgba(61,214,140,.15)';
+      ctx.beginPath();
+      ctx.moveTo(c0x,c0y);ctx.lineTo(c1x,c1y);ctx.lineTo(c2x,c2y);ctx.lineTo(c3x,c3y);
+      ctx.closePath();ctx.fill();
+
+      const cls=classes.find(c=>c.id===activeClassId);
+      const name=cls?.students?.find(s=>s.cardNum===cardNum)?.name||`#${cardNum}`;
+      ctx.fillStyle='#3dd68c';ctx.font='bold 14px Outfit';
+      ctx.fillText(`${name}: ${ans}`,c0x,c0y-6);
+      markerCorners.delete();
+    }
+    if(newFound){
+      renderDet();
+      const now=Date.now();
+      if(now-lastPush>800){pushScan();lastPush=now;}
+    }
+  }
+
+  src.delete();gray.delete();corners.delete();ids.delete();params.delete();detector.delete();
+}
+
+function toggleDebug(){const p=document.getElementById('debug-panel');p.style.display=p.style.display==='none'?'block':'none';}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+renderDet();
+</script>
+</body>
+</html>
